@@ -5,6 +5,9 @@ const path    = require("path");
 const app = express();
 app.use(express.static(__dirname + "static"));
 
+app.get("/", (req,res) => {
+  res.send("Welcome to my page!");
+});
 
 app.use((req,res,next) => {
   console.log("Request IP: " + req.url);
@@ -34,9 +37,6 @@ app.use((req,res, next) => {
 app.use((err,req,res,next) => {
   res.status(404).send("File not found.");
 })
-app.get("/", (req,res) => {
-  res.send("Welcome to my page!");
-});
 app.listen(8000,()=>{
   console.log("Server is running on port 8000");
 });
