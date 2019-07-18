@@ -65,20 +65,31 @@ module.exports = {
       if (req.body.member) {
         collectionUser.findOne({username:req.body.member}).exec((err, user) => {
           if (err) return next(new Error(err.message));
-          if (!user) {res.status(404).json({success:false, message:"Not found user!"}); return;}
+          if (!user) {
+            res.status(404).json({success: false, message: "Not found user!"}); 
+            return;
+          }
           var index2 = board.cards[index].members.indexOf(user._id);
           if (index2 < 0) board.cards[index].members.push(user);
           else board.cards[index].members.splice(index2,1);
           board.cards[index].save((err, cardSaved) => {
             if (err) return next(new Error(err.message));
-            res.status(200).json({success:true, message:"Update card successful!", data:cardSaved});
+            res.status(200).json({
+              success: true, 
+              message: "Update card successful!", 
+              data: cardSaved
+            });
           });
         });
       }
       else {
         board.cards[index].save((err, cardSaved) => {
           if (err) return next(new Error(err.message));
-          res.status(200).json({success:true, message:"Update card successful!", data:cardSaved});
+          res.status(200).json({
+            success: true, 
+            message:"Update card successful!", 
+            data: cardSaved
+          });
         });
       }
     });
@@ -91,7 +102,10 @@ module.exports = {
     .populate("cards")
     .exec((err, board) => {
       if (err) return next(new Error(err.message));
-      if (!board) {res.status(404).json({success:false, message:"Not found board!"}); return;}
+      if (!board) {
+        res.status(404).json({success: false, message: "Not found board!"}); 
+        return;
+      }
       //Check if user is exist in board before delete card
       if (!board.verifyUser(user)) {
         res.status(403).status({success: false, message: "You're not in board to delete the card"}); 
@@ -103,7 +117,11 @@ module.exports = {
         if (err) return next(new Error(err.message));
         board.cards.splice(index,1);
         board.save((err, boardSaved) => {
-          res.status(200).json({success:true, message:"Delete card successful!", data: boardSaved});
+          res.status(200).json({
+            success:true, 
+            message:"Delete card successful!", 
+            data: boardSaved
+          });
         });
       });
     });
@@ -138,7 +156,11 @@ module.exports = {
         }); 
         board.cards[index].save((err, cardSaved) => {
           if (err) return next(new Error(err.message));
-          res.status(200).json({success:true, message:"Update card successful!", data:cardSaved});
+          res.status(200).json({
+            success: true, 
+            message: "Update card successful!", 
+            data: cardSaved
+          });
         });
       }
     });
@@ -153,11 +175,14 @@ module.exports = {
     //get index of comment and newComment from body
     var indexCmt = req.body.indexComment;
     var newComment = req.body.newComment;
-    collectionBoard.findOne({cards:cardId})
+    collectionBoard.findOne({cards: cardId})
     .populate("cards")
     .exec((err, board) => {
       if (err) return next(new Error(err.message));
-      if (!board) {res.status(404).json({success:false, message:"Not found board!"}); return;}
+      if (!board) {
+        res.status(404).json({success: false, message: "Not found board!"}); 
+        return;
+      }
       //Check user is exist in board before update comment
       indexUser = board.members.indexOf(user._id);
       if (indexUser < 0) {
@@ -171,10 +196,14 @@ module.exports = {
         board.cards[indexCard].comments[indexCmt].content = newComment;
         board.cards[indexCard].save((err, cardSaved) => {
           if (err) return next(new Error(err.message));
-          res.status(200).json({success :true, message: "Update comment successful!", data:cardSaved});
+          res.status(200).json({
+            success: true, 
+            message: "Update comment successful!", 
+            data: cardSaved
+          });
         });
       }
-      else res.status(403).json({success:false, message:"You're not allowed to update this comment!"}); 
+      else res.status(403).json({success: false, message: "You're not allowed to update this comment!"}); 
     });
   },
 
@@ -191,16 +220,18 @@ module.exports = {
     .populate("cards")
     .exec((err, board) => {
       if (err) return next(new Error(err.message));
-      if (!board) {res.status(404).json({success:false, message:"Not found board!"}); return;}
+      if (!board) {
+        res.status(404).json({success: false, message: "Not found board!"}); 
+        return;
+      }
       //Check user is exist in board before delete comment
       indexUser = board.members.indexOf(user._id);
       if (indexUser < 0) {
-        res.status(403).json({success:false, message:"You're not in this board to delete the comment!"}); 
+        res.status(403).json({success: false, message: "You're not in this board to delete the comment!"}); 
         return;
       }
       //Get index of card in board 
       indexCard = board.getIndexOfCard(cardId);
-      console.log(indexCard);
       
       //Check who comments
       if (board.cards[indexCard].comments[indexCmt].whoComment === indexUser || 
@@ -209,10 +240,14 @@ module.exports = {
         board.cards[indexCard].comments.splice(indexCmt,1);
         board.cards[indexCard].save((err, cardSaved) => {
           if (err) return next(new Error(err.message));
-          res.status(200).json({success:true, message:"Delete comment successful!", data:cardSaved});
+          res.status(200).json({
+            success: true, 
+            message: "Delete comment successful!", 
+            data: cardSaved
+          });
         });
       }
-      else res.status(403).json({success:false, message:"You're not allowed to delete this comment!"}); 
+      else res.status(403).json({success: false, message: "You're not allowed to delete this comment!"}); 
     });
   },
 
@@ -240,7 +275,11 @@ module.exports = {
         board.cards[index].tasks.push({taskName: req.body.taskName});
         board.cards[index].save((err, cardSaved) => {
           if (err) return next(new Error(err.message));
-          res.status(200).json({success:true, message:"Update card successful!", data:cardSaved});
+          res.status(200).json({
+            success: true, 
+            message: "Update card successful!", 
+            data: cardSaved
+          });
         });
       }
     });
@@ -255,24 +294,30 @@ module.exports = {
     //Get index of task, newTaskName from body
     var indexTask = req.body.indexTask;
     var newTaskName = req.body.newTaskName;
-    collectionBoard.findOne({cards:cardId})
+    collectionBoard.findOne({cards: cardId})
     .populate("cards")
     .exec((err, board) => {
       if (err) return next(new Error(err.message));
-      if (!board) {res.status(404).json({success:false, message:"Not found board!"}); return;}
+      if (!board) {
+        res.status(404).json({success: false, message: "Not found board!"}); 
+        return;
+      }
       //Check of user is exist in board before updating taskName
       indexUser = board.members.indexOf(user._id);
       if (indexUser < 0) {
-        res.status(403).json({success:false, message:"You're not in this board to update task name!"}); 
+        res.status(403).json({success: false, message: "You're not in this board to update task name!"}); 
         return;
       }
       //Get index of card in board 
       indexCard = board.getIndexOfCard(cardId);
       board.cards[indexCard].tasks[indexTask].taskName = newTaskName;
-      console.log(board.cards[indexCard].tasks[indexTask].taskName);
       
       board.cards[indexCard].save((err, cardSaved) => {
-        res.status(200).json({success:true, message:"Update task name successful!", data:cardSaved});
+        res.status(200).json({
+          success: true, 
+          message: "Update task name successful!", 
+          data: cardSaved
+        });
       });
     });
   },
@@ -285,22 +330,29 @@ module.exports = {
     var indexUser;
     //Get index of task, from body
     var indexTask = req.body.indexTask;
-    collectionBoard.findOne({cards:cardId})
+    collectionBoard.findOne({cards: cardId})
     .populate("cards")
     .exec((err, board) => {
       if (err) return next(new Error(err.message));
-      if (!board) {res.status(404).json({success:false, message:"Not found board!"}); return;}
+      if (!board) {
+        res.status(404).json({success: false, message: "Not found board!"}); 
+        return;
+      }
       //Check of user is exist in board before deleting task
       indexUser = board.members.indexOf(user._id);
       if (indexUser < 0) {
-        res.status(403).json({success:false, message:"You're not in this board to delete task!"}); 
+        res.status(403).json({success: false, message: "You're not in this board to delete task!"}); 
         return;
       }
       //Get index of card in board 
       indexCard = board.getIndexOfCard(cardId);
       board.cards[indexCard].tasks.splice(indexTask,1);
       board.cards[indexCard].save((err, cardSaved) => {
-        res.status(200).json({success:true, message:"Delete task successful!", data:cardSaved});
+        res.status(200).json({
+          success: true, 
+          message: "Delete task successful!", 
+          data: cardSaved
+        });
       });
     });
   },
@@ -314,22 +366,29 @@ module.exports = {
     //Get index of task, content from body
     var indexTask = req.body.indexTask;
     var content = req.body.content;
-    collectionBoard.findOne({cards:cardId})
+    collectionBoard.findOne({cards: cardId})
     .populate("cards")
     .exec((err, board) => {
       if (err) return next(new Error(err.message));
-      if (!board) {res.status(404).json({success:false, message:"Not found board!"}); return;}
+      if (!board) {
+        res.status(404).json({success: false, message: "Not found board!"}); 
+        return;
+      }
       //Check of user is exist in board before deleting task
       indexUser = board.members.indexOf(user._id);
       if (indexUser < 0) {
-        res.status(403).json({success:false, message:"You're not in this board to add content task!"}); 
+        res.status(403).json({success: false, message: "You're not in this board to add content task!"}); 
         return;
       }
       //Get index of card in board 
       indexCard = board.getIndexOfCard(cardId);
       board.cards[indexCard].tasks[indexTask].contents.push(content);
       board.cards[indexCard].save((err, cardSaved) => {
-        res.status(200).json({success:true, message:"Add content task successful!", data:cardSaved});
+        res.status(200).json({
+          success: true, 
+          message: "Add content task successful!", 
+          data: cardSaved
+        });
       });
     });
   },
@@ -344,15 +403,18 @@ module.exports = {
     var indexTask = req.body.indexTask;
     var indexContent = req.body.indexContent;
     var newContent = req.body.newContent;
-    collectionBoard.findOne({cards:cardId})
+    collectionBoard.findOne({cards: cardId})
     .populate("cards")
     .exec((err, board) => {
       if (err) return next(new Error(err.message));
-      if (!board) {res.status(404).json({success:false, message:"Not found board!"}); return;}
+      if (!board) {
+        res.status(404).json({success: false, message: "Not found board!"}); 
+        return;
+      }
       //Check of user is exist in board before deleting task
       indexUser = board.members.indexOf(user._id);
       if (indexUser < 0) {
-        res.status(403).json({success:false, message:"You're not in this board to update content task!"}); 
+        res.status(403).json({success: false, message: "You're not in this board to update content task!"}); 
         return;
       }
       //Get index of card in board
@@ -360,7 +422,11 @@ module.exports = {
       board.cards[indexCard].tasks[indexTask].contents[indexContent] = newContent;
       board.cards[indexCard].tasks[indexTask].markModified('contents');
       board.cards[indexCard].save((err, cardSaved) => {
-        res.status(200).json({success:true, message:"Update content task successful!", data:cardSaved});
+        res.status(200).json({
+          success: true, 
+          message: "Update content task successful!", 
+          data: cardSaved
+        });
       });
     });
   },
@@ -374,19 +440,29 @@ module.exports = {
     //Get index of task, indexContent of content from body
     var indexTask = req.body.indexTask;
     var indexContent = req.body.indexContent;
-    collectionBoard.findOne({cards:cardId})
+    collectionBoard.findOne({cards: cardId})
     .populate("cards")
     .exec((err, board) => {
       if (err) return next(new Error(err.message));
-      if (!board) {res.status(404).json({success:false, message:"Not found board!"}); return;}
+      if (!board) {
+        res.status(404).json({success: false, message: "Not found board!"}); 
+        return;
+      }
       //Check of user is exist in board before deleting task
       indexUser = board.members.indexOf(user._id);
-      if (indexUser < 0) {res.status(403).json({success:false, message:"You're not in this board to delete task name!"}); return;}
+      if (indexUser < 0) {
+        res.status(403).json({success: false, message: "You're not in this board to delete task name!"});
+         return;
+        }
       //Get index of card in board 
       indexCard = board.getIndexOfCard(cardId);
       board.cards[indexCard].tasks[indexTask].contents.splice(indexContent,1);
       board.cards[indexCard].save((err, cardSaved) => {
-        res.status(200).json({success:true, message:"Delete content task successful!", data:cardSaved});
+        res.status(200).json({
+          success: true,
+           message: "Delete content task successful!", 
+           data: cardSaved
+          });
       });
     });
   },
