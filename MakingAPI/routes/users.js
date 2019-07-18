@@ -9,6 +9,7 @@ router.route("/:name/members")
 .post(userController.isAuthenticated, boardController.invite)
 .delete(userController.isAuthenticated, boardController.removeUser);
 
-// router.route("/account");
+router.route("/iduser/:idUser/cards")
+.get(userController.isAuthenticated, userController.getAllCardOfUser);
 
 module.exports = router;

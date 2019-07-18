@@ -1,5 +1,6 @@
 const collectionUser  = require("../models/user.model.js");
 const collectionBoard = require("../models/board.model.js");
+const collectionCard  = require("../models/card.model.js");
 const bcrypt          = require("bcrypt");
 const jwt             = require("jsonwebtoken");
 module.exports = {
@@ -113,6 +114,23 @@ module.exports = {
         else res.status(403).json({success: false, message: "You're not in this board!"});
       }
       else res.status(404).json({success: false, message: "Not found board!"});
+    });
+  },
+
+  getAllCardOfUser: function(req, res, next) {
+    var idUser = req.params.idUser;
+    collectionCard.find({members: idUser})
+    .exec((err, cards) => {
+      if (err) return next(new Error(err.message));
+      if (!cards) {
+        res.status(404).json({success: false, message: "Not found card!"});
+        return;
+      }
+      res.status(200).json({
+        success: true,
+        message: "Get all card of user",
+        data: cards
+      });
     });
   },
 
