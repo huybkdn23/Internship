@@ -1,0 +1,13 @@
+# EditorConfig is awesome: http://EditorConfig.org
+
+# Đây là file thiết lập gốc
+root = true
+# Nhưng với các tập tin JavaScript trong thư mục lib thì dùng 2 khoảng trắng
+[*.js]
+indent_style = space
+indent_size = 2
+
+# Đối với tập tin package.json hoặc .travis.yml thì dùng 2 khoảng trắng
+[{package.json,.travis.yml}]
+indent_style = space
+indent_size = 2
