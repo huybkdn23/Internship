@@ -14,7 +14,6 @@ router.route("/b/boards/:nameBoard")
 .delete(userController.isAuthenticated, boardController.deleteBoard);
 
 
-// set /b/:boardId/:name not be identical with /:username/boards
 router.route("/b/:boardId/name/:name")
 .get(userController.isAuthenticated, boardController.getInBoard)
 .post(userController.isAuthenticated, boardController.invite)
