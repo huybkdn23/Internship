@@ -1,253 +1,126 @@
-const collectionBoard   = require("../models/board.model.js");
-const collectionUser    = require("../models/user.model.js");
-const collectionCard    = require("../models/card.model.js");
-const mongoose          = require("mongoose");
+const boardService      = require('../services/board.service.js');
 
 module.exports = {
-  getFullBoard: function(req, res, next) {
-    var user = req.user;
-    //get username on link
-    var username = req.params.username;
-    if (user.username !== username) {
-      res.redirect(`../${user.username}/boards`); 
-      return;
-    }
-    collectionBoard.find({members: user})
-    .exec((err, boards) => {
-      if (err) return next(new Error(err.message));
-      res.status(200).json({success: true, data: boards});
-    })
-  },
+  getFullBoard,
+  createBoard,
+  getInBoard,
+  updateNameBoard,
+  deleteBoard,
+  getUsersInBoard
+}
+/**
+* @name getFullBoard
+* @description
+* Do get all board of current user
+* @param  {object}   req  HTTP request
+* @param  {object}   res  HTTP response
+* @param  {Function} next Next middleware
+*/
+function getFullBoard(req, res, next) {
+  const user = req.user;
+  boardService.getBoardsOf(user)
+  .then(boards => {
+    res.status(200).json({data: boards});
+  })
+  .catch(err => {
+    res.status(err.code).json({message: err.message});
+  })
+}
 
-  postBoard: function(req ,res, next) {
-    var user = req.user;
-    var nameBoard = req.body.nameBoard;
-    nameBoard = nameBoard.replace(/%20/g, " ");
-    var board = new collectionBoard({name: nameBoard, 
-                                    members: user, 
-                                    permissions: true});
-    board.save((err, boardSaved) => {
-      if (err) return next(new Error(err.message));
-      res.status(200).json({
-        success: true, 
-        message: "Save board successful!", 
-        data: boardSaved});
-    });
-  },
+/**
+* @name createBoard
+* @description
+* Do create a board
+* @param  {object}   req  HTTP request
+* @param  {object}   res  HTTP response
+* @param  {Function} next Next middleware
+*/
+function createBoard(req ,res, next) {
+  const user = req.user;
+  const name = req.body.name;
+  boardService.create(user, name)
+  .then(board => {
+    res.status(200).json({message: 'Create board successful!', data: board});
+  })
+  .catch(err => {
+    res.status(500).json({message: err.message});
+  });
+}
 
-  updateNameBoard: function(req, res, next) {
-    var user = req.user;
-    var nameBoard = req.params.nameBoard;
-    nameBoard = nameBoard.replace(/%20/g, " ");
-    collectionBoard.findOne({name: nameBoard})
-    .exec((err, board) => {
-      if (err) return next(new Error(err.message));
-      if (!board) {
-        res.status(404).json({success: false, message: "Not found board!"}); 
-        return;
-      }
-      //Check permission of user
-      var index = board.members.indexOf(user._id);
-      if (index < 0) {
-        res.status(403).json({success: false, message: "You're not in this board!"});
-        return;
-      }
-      console.log(`permission ${board.permissions[index]} and user in board ${board.members[index]}`);
-      if (board.permissions[index]) {
-        board.name = req.body.nameBoard;
-        board.save((err, boardSaved) => {
-          res.status(200).json({
-            success: true, 
-            message: "Update board successful!", 
-            data: boardSaved});
-        });
-      }
-      else res.status(403).json({success: false, message: "You're not allowed to change this board!"});
-    });
-  },
+/**
+* @name getInBoard
+* @description
+* Check current user is exist in board
+* Do get all users and cards in board
+* @param  {object}   req  HTTP request
+* @param  {object}   res  HTTP response
+* @param  {Function} next Next middleware
+*/
+function getInBoard(req, res, next) {
+  const board = req.board;
+  // console.log(board);
+  
+  boardService.getIn(board)
+  .then(data => {
+    res.status(200).json({message: 'List users and cards!', data: data});
+  });
+}
 
-  deleteBoard: function(req, res, next) {
-    var user = req.user;
-    var nameBoard = req.params.nameBoard;
-    nameBoard = nameBoard.replace(/%20/g, " ");
-    collectionBoard.findOne({name: nameBoard})
-    .populate("cards")
-    .exec((err, board) => {
-      if (err) return next(new Error(err.message));
-      if (!board) {
-        res.status(404).json({success: false, message: "Not found board!"}); 
-        return;
-      }
-      var index = board.members.indexOf(user._id);
-      if (index < 0) {
-        res.status(403).json({success: false, message: "You're not in this board!"});
-        return;
-      }
-      //find user in board and check permission of user
-      if (index >= 0 && board.permissions[index]) {
-        //remove all cards in this board
-        collectionCard.deleteMany({_id: board.cards}).exec((err) => {});
-        board.remove((err, board) => {
-          if (err) return next(new Error(err.message));
-          res.status(200).json({
-            success: true, 
-            message: "Delete board successful!", 
-            data: board
-          });
-        });
-      }
-      else res.status(403).json({success: false, message: "You're not allowed to delete this board!"});
-    });
-  },
+/**
+* @name updateNameBoard
+* @description
+* Do update name of board
+* Check perrmission of current user before update name board
+* @param  {object}   req  HTTP request
+* @param  {object}   res  HTTP response
+* @param  {Function} next Next middleware
+*/
+function updateNameBoard(req, res, next) {
+  const board = req.board;
+  const newName = req.body.name;
+  boardService.update(board, newName)
+  .then(boardSaved => {
+    res.status(200).json({data: boardSaved});
+  })
+  .catch(err => {
+    res.status(500).json({message: err.message});
+  });
+}
 
-  invite: function(req, res, next) {
-    //Get nameOrMail from body
-    var user = req.user;
-    var nameBoard = req.params.name;
-    var nameOrMail = req.body.nameOrMail;
-    nameBoard = nameBoard.replace(/%20/g, " ");
-    nameOrMail = nameOrMail.replace(/%20/g, " ");
-    collectionBoard.findOne({name: nameBoard})
-    .exec((err, board) => {
-      if (err) return next(new Error(err.message));
-      if (board) {
-        //Check user is exist in board before invite the others user
-        if (board.members.indexOf(user._id) >= 0) {
-          collectionUser.findOne({
-            $or: [
-              {username: nameOrMail}, 
-              {email: nameOrMail}
-            ]
-            }).exec((err, user) => {
-            if (err) return next(new Error(err.message));
-            if (user) {
-              //check if user is invited exist in board
-              if (board.members.indexOf(user._id) >= 0 ) {
-                res.status(400).json({success: false, message: "User is exist in board"}); 
-                return;
-              }
-              board.members.push(user);
-              board.permissions.push(false);
-              board.save((err, boardSaved) => {
-                res.status(200).json({
-                  success: true, 
-                  message: "Invited successful!", 
-                  data: boardSaved
-                });
-              });
-            }
-            else {
-              res.status(404).json({success: false, message: "Not found User"}); 
-              return;
-            }
-          });
-        }
-        else {
-          res.status(403).json({success: false, message: "You're not in this board to invite the others user"});
-          return;
-        }
-      }
-      else res.status(404).json({success: false, message: "Board not found!"});
-    });
-  },
+/**
+* @name deleteBoard
+* @description
+* Check permission of current user before delete board
+* Remove all cards in board
+* Do delete a board
+* @param  {object}   req  HTTP request
+* @param  {object}   res  HTTP response
+* @param  {Function} next Next middleware
+*/
+function deleteBoard(req, res, next) {
+  const board = req.board;
+  boardService.deleteBoard(board)
+  .then(boardRemoved => {
+    res.status(200).json({message: 'Delete board successful!', data: boardRemoved});
+  })
+  .catch(err => {
+    res.status(500).json({message: err.message});
+  });
+}
 
-  removeUser: function(req, res, next) {
-    //Check boardId is exist on url
-    var user = req.user;
-    var nameBoard = req.params.name;
-    var nameOrMail = req.body.nameOrMail;
-    nameBoard = nameBoard.replace(/%20/g, " ");
-    nameOrMail = nameOrMail.replace(/%20/g, " ");
-    collectionBoard.findOne({name: nameBoard})
-    .populate("cards")
-    .exec((err, board) => {
-      if (err) return next(new Error(err.message));
-      if (board) {
-        var index = board.members.indexOf(user._id);
-        if (index < 0) {
-          res.status(403).json({success: false, message: "You're not in this board!"});
-          return;
-        }
-        //Check permission of user before removing the others user
-        if (board.permissions[index]) {
-          collectionUser.findOne({
-            $or: [
-              {username:nameOrMail}, 
-              {email:nameOrMail}
-            ]
-          }).exec((err, userRemoved) => {
-            if (!userRemoved) {res.status(404).json({success:false, message:"User not found!"}); return;}
-            //Check user removed exist in the board
-            var index2 = board.members.indexOf(userRemoved._id);
-            if (index2 < 0) {
-              res.status(400).json({success:false, message:"User is not in this board!"}); 
-              return;
-            }
-            //remove user in card (member and comment)
-            board.cards.forEach(element => {
-              index = element.members.indexOf(userRemoved._id);
-              if (index >= 0) {
-                element.members.splice(index,1);
-                element.save();
-              }
-              element.comments.forEach((comment, indexComment) => {
-                if (comment.whoComment === index2) {
-                  element.comments.splice(indexComment,1);
-                  element.save();
-                }
-              });
-            });
-            board.members.splice(index2,1);
-            board.permissions.splice(index2,1);
-            board.save((err, boardSaved) => {
-              res.status(200).json({success:true, message:"Remove successful!", data:boardSaved});
-            });
-          
-          });
-        }
-        else res.status(403).json({success:false, message:"You're not allowed to remove this user!"});
-      }
-      else res.status(404).json({success:false, message:"Board not found!"});
-    });
-  },
-
-  getInBoard: function(req, res, next) {
-    var user = req.user;
-    //Check input boardId is on link or not
-    var boardId = req.params.boardId;
-    var nameBoard = req.params.name;
-    
-    collectionBoard.findById(boardId)
-    .populate('members', '-hashPassword')
-    .populate("cards")
-    .exec((err, board) => {
-      if (err) return next(new Error(err.message));
-      if (!board) {
-        res.status(404).json({success: false, message: "Not found page!"}); 
-        return;
-      }
-      //Check user is exist in this board
-      user.hashPassword = undefined;
-      // console.log(board.members)
-      // console.log(user.hashPassword)
-      // console.log(board.members.indexOf(user.toString()));
-      if (board.members.indexOf(user.toString()) < 0 ) {
-        res.status(403).json({success: false, message: "You're not in this board!"}); 
-        return;
-      }
-      if (board.name !== nameBoard) {
-        res.redirect(`../${board._id}/${board.name}`); 
-        return;
-      }
-      //Get users and cards in board
-      res.status(200).json({
-        success: true,
-         message: "Welcome to board page!", 
-         data: {
-           arrUsers: board.members, 
-           arrCards: board.cards
-          }
-      });
-    });
-  }
+/**
+* @name getUsersInBoard
+* @description
+* Check current user is exist in board
+* Do get user in board
+* @param  {object}   req  HTTP request
+* @param  {object}   res  HTTP response
+* @param  {Function} next Next middleware
+*/
+function getUsersInBoard(req, res, next) {
+  const board = req.board;
+  boardService.getUsersIn(board)
+  .then(members => {
+    res.status(200).json({message: 'All users in board!', data: members});
+  });
 }

@@ -1,35 +1,32 @@
-const collectionBoard   = require("../models/board.model.js");
-const collectionCard    = require("../models/card.model.js");
+const searchService     = require('../services/search.service.js');
 
 module.exports = {
-  search: function(req, res, next) {
-    var query = req.query.q;
-    var arrBoards = [];
-    var arrCards = [];
-    query = query.replace(/%20/g, " ");
-    collectionBoard.find({name: query})
-    .select("name")
-    .exec((err, boards) => {
-      if (err) return next(new Error(err.message));
-      if (boards.length) arrBoards = boards;
-    });
-    collectionCard.find({title: query})
-    .select("title dueDate")
-    .exec((err, cards) => {
-      if (err) return next(new Error(err.message));
-      if (cards.length) arrCards = cards;
-    });
+  search
+}
+
+/**
+ * @name search
+ * @description
+ * Search boards or cards
+ * @param {object} req HTTP request
+ * @param {object} res HTTP response
+ */
+function search(req, res) {
+  const query = req.query.q;
+  Promise.all([
+    searchService.getBoards(query),
+    searchService.getCards(query)
+  ])
+  .then(results => {
     res.status(200).json({
-      success: true, 
+      message: 'Boards and cards are found!', 
       data: {
-        arrBoards: arrBoards, 
-        arrCards: arrCards
+        boards: results[0],
+        cards: results[1]
       }
     });
-  },
-
-  get: function(req, res) {
-    res.status(200).json({success: true, message: "Search page!"});
-  }
-
+  })
+  .catch(err => {
+    res.json({message: err.message});
+  })
 }

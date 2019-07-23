@@ -1,35 +1,39 @@
-const express         = require("express");
-const cardController  = require("../controllers/card.controller.js");
-const userController  = require("../controllers/user.controller.js");
-const handler         = require("../controllers/handler.controller.js");
-const router          = express.Router();
+const express           = require('express');
+const cardController    = require('../controllers/card.controller.js');
+const auth              = require('../middlewares/auth.middleware.js');
+const router            = express.Router();
 
-router.route("/b/:boardId/c/newc")
-.post(userController.isAuthenticated, cardController.postCard);
+router.route('/boards/:id/cards')
+.post(auth.isAuthenticated, auth.isExistInBoard, cardController.createCard);
 
-router.route("/c/:cardId")
-.get(userController.isAuthenticated, cardController.getInCard)
-.put(userController.isAuthenticated, cardController.updateTitDesDueMem)
-.delete(userController.isAuthenticated, cardController.deleteCard);
+router.route('/boards/:boardId/cards/:cardId')
+.get(auth.isAuthenticated, auth.isExistInBoard, cardController.getInCard)
+.put(auth.isAuthenticated, auth.isExistInBoard, cardController.updateTitDesDueMem)
+.delete(auth.isAuthenticated, auth.isExistInBoard, cardController.deleteCard);
 
-router.route("/c/:cardId/cmts")
-.get(userController.isAuthenticated, cardController.getFullCommentInCard)
-.post(userController.isAuthenticated, cardController.addComment)
-.put(userController.isAuthenticated, cardController.updateComment)
-.delete(userController.isAuthenticated, cardController.deleteComment);
+router.route('/boards/:boardId/cards/:cardId/comments')
+.get(auth.isAuthenticated, auth.isExistInBoard, cardController.getFullCommentInCard)
+.post(auth.isAuthenticated, auth.isExistInBoard, cardController.addComment);
+
+router.route('/boards/:boardId/cards/:cardId/comments/:index')
+.put(auth.isAuthenticated, auth.isExistInBoard, cardController.updateComment)
+.delete(auth.isAuthenticated, auth.isExistInBoard, cardController.deleteComment);
 
 //Add Task, update taskName, delete task
-router.route("/c/:cardId/tsks")
-.get(userController.isAuthenticated, cardController.getFullTaskInCard)
-.post(userController.isAuthenticated, cardController.addTask)
-.put(userController.isAuthenticated, cardController.updateTaskName)
-.delete(userController.isAuthenticated, cardController.deleteTask);
+router.route('/boards/:boardId/cards/:cardId/tasks')
+.get(auth.isAuthenticated, auth.isExistInBoard, cardController.getFullTaskInCard)
+.post(auth.isAuthenticated, auth.isExistInBoard, cardController.addTask);
+
+router.route('/boards/:boardId/cards/:cardId/tasks/:index')
+.put(auth.isAuthenticated, auth.isExistInBoard, cardController.updateTaskName)
+.delete(auth.isAuthenticated, auth.isExistInBoard, cardController.deleteTask);
 
 //Add, update, delete into content of task
-router.route("/c/:cardId/contenttsks")
-.get(handler.notFoundPage)
-.post(userController.isAuthenticated, cardController.addContentTask)
-.put(userController.isAuthenticated, cardController.updateContentTask)
-.delete(userController.isAuthenticated, cardController.deleteContentTask);
+router.route('/boards/:boardId/cards/:cardId/tasks/:index/contents')
+.post(auth.isAuthenticated, auth.isExistInBoard, cardController.addContentTask);
+
+router.route('/boards/:boardId/cards/:cardId/tasks/:indexTask/contents/:indexContent')
+.put(auth.isAuthenticated, auth.isExistInBoard, cardController.updateContentTask)
+.delete(auth.isAuthenticated, auth.isExistInBoard, cardController.deleteContentTask);
 
 module.exports = router;
