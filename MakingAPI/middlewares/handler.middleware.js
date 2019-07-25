@@ -4,7 +4,7 @@ module.exports = {
 }
 
 function notFoundPage(req, res) {
-  res.status(500).json({message: 'Error!'});
+  res.status(404).json({message: 'Not found page!'});
 }
 
 /**
