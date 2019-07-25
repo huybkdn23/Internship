@@ -1,0 +1,310 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "version": "1.0.0",
+    "title": "Making Fake API Trello",
+    "contact": {
+      "email": "huybkdn23@gmail.com"
+    }
+  },
+  "host": "localhost:8000",
+  "basePath": "/v1",
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "API for authentication"
+    },
+    {
+      "name": "Users",
+      "description": "API for Users"
+    },
+    {
+      "name": "Boards",
+      "description": "API for Boards"
+    },
+    {
+      "name": "Cards",
+      "description": "API for Cards"
+    }
+  ],
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/signup": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Create new user",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Type your email and password",
+            "required": true,
+            "schema": {
+              "example": {
+                "email": "your_email",
+                "password": "your_password"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Create successfully"
+          },
+          "400": {
+            "description": "Invalid input"
+          }
+        }
+      }
+    },
+    "/login": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Login user",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "description": "Type your email and password to login",
+            "required": true,
+            "schema": {
+              "example": {
+                "email": "huybkdn23@gmail.com",
+                "password": "passuser1"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Login successfully"
+          },
+          "400": {
+            "description": "Loggin error"
+          },
+          "401": {
+            "description": "User not exist"
+          }
+        }
+      }
+    },
+    "/boards": {
+      "get": {
+        "tags": [
+          "Boards"
+        ],
+        "summary": "/boards?q={query}&page={page}&perPage={perPage}&sort={ascOrDesc}:",
+        "description": "Authenticated login",
+        "parameters": [
+          {
+            "name": "Authorization",
+            "type": "string",
+            "in": "header",
+            "description": "Bearer {Token}",
+            "required": true
+          },
+          {
+            "name": "q",
+            "type": "string",
+            "in": "query",
+            "description": "Query by name"
+          },
+          {
+            "name": "page",
+            "type": "string",
+            "in": "query",
+            "description": "page number"
+          },
+          {
+            "name": "perPage",
+            "type": "string",
+            "in": "query",
+            "description": "Items per page"
+          },
+          {
+            "name": "sort",
+            "type": "string",
+            "in": "query",
+            "description": "asc or desc"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Get all boards of current user"
+          },
+          "400": {
+            "description": "Not found board"
+          },
+          "422": {
+            "description": "Invalid sort"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Boards"
+        ],
+        "summary": "Create new board",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Type a name board",
+            "required": true,
+            "schema": {
+              "example": {
+                "name": "board_name"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Create successfully"
+          },
+          "400": {
+            "description": "Invalid name"
+          }
+        }
+      }
+    },
+    "/boards/{id}": {
+      "get": {
+        "tags": [
+          "Boards"
+        ],
+        "summary": "View in board",
+        "parameters": [
+          {
+            "name": "Authorization",
+            "type": "string",
+            "in": "header",
+            "description": "Bearer {Token}"
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "type": "string",
+            "description": "Type a board id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "View in board successfully"
+          },
+          "403": {
+            "description": "You're not in this board"
+          },
+          "404": {
+            "description": "Not found board"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "User": {
+      "required": [
+        "hashPassword",
+        "email"
+      ],
+      "properties": {
+        "_id": {
+          "type": "object",
+          "uniqueItems": true
+        },
+        "username": {
+          "type": "string"
+        },
+        "hashPassword": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "firstName": {
+          "type": "string",
+          "default": "\"\""
+        },
+        "lastName": {
+          "type": "string",
+          "default": "\"\""
+        },
+        "birthDay": {
+          "type": "object"
+        },
+        "path": {
+          "type": "string"
+        }
+      }
+    },
+    "Board": {
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "_id": {
+          "type": "object",
+          "uniqueItems": true
+        },
+        "name": {
+          "type": "string",
+          "uniqueItems": true
+        },
+        "members": {
+          "type": "array"
+        },
+        "createdBy": {
+          "type": "object"
+        },
+        "cards": {
+          "type": "array",
+          "default": "\"\""
+        }
+      }
+    },
+    "Card": {
+      "required": [
+        "title"
+      ],
+      "properties": {
+        "_id": {
+          "type": "object",
+          "uniqueItems": true
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "dueDate": {
+          "type": "object"
+        },
+        "tasks": {
+          "type": "array"
+        },
+        "members": {
+          "type": "array"
+        },
+        "comments": {
+          "type": "array"
+        }
+      }
+    }
+  }
+}
