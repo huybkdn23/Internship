@@ -18,22 +18,21 @@ module.exports = {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function isAuthenticated(req, res, next)  {
-  if (req.headers.authorization &&
-      req.headers.authorization.split(' ')[0] === 'Bearer') {
-        const token = req.headers.authorization.split(' ')[1];
-        jwt.verify(token, process.env.jwtSecret, (err, payload) => {
-          if (err) return next(new Error(err.message));
-          collectionUser.findById(payload.id)
-          .exec((err, user) => {
-            if (err) throw err;
-            if (user) {req.user = user; next();}
-            else res.status(401).json({success: false, message: 'User is not authorized!'});
-          });
-        });
-      }
-  else {
-    res.status(401).json({success: false, message: 'User is not authorized!'});
+async function isAuthenticated(req, res, next)  {
+  if (!req.headers.authorization ||
+    req.headers.authorization.split(' ')[0] !== 'Bearer') {
+      res.status(401).json({message: 'User is not authorized!'});
+    }
+  const token = req.headers.authorization.split(' ')[1];
+  try {
+    const payload = await jwt.verify(token, process.env.jwtSecret);
+    let user = await collectionUser.findById(payload.id)
+    .exec();
+    if (!user) res.status(401).json({message: 'User is not authorized!'});
+    req.user = user;
+    next();
+  } catch (err) {
+    return next(new Error(err.message));
   }
 }
 
@@ -48,10 +47,12 @@ function isAuthenticated(req, res, next)  {
 function verifyID(req, res, next) {
   const id = req.params.id;
   const user = req.user;
-  if (!user.verifyID(id)) {
-    return res.status(403).json({message: 'User is not authorized!'});
+  try {
+    user.verifyID(id);
+    next();
+  } catch (err) {
+    return res.status(err.code).json({message: err.message});
   }
-  else next();
 }
 
 /**
@@ -62,25 +63,22 @@ function verifyID(req, res, next) {
 * @param  {object}   res  HTTP response
 * @param  {object}   next Next middleware
 */
-function isExistInBoard(req, res, next) {
+async function isExistInBoard(req, res, next) {
   let id = req.params.id;
   if (!id) id = req.params.boardId;
   let user = req.user;
   user.hashPassword = undefined;
-  collectionBoard.findById(id)
+  let board = await collectionBoard.findById(id)
   .populate('members', '-hashPassword')
   .populate('cards')
-  .exec((err, board) => {
-    if (!board ) res.status(404).json({message: 'Not found board!'});
-    if (!board.verifyUser(user)) {
-      res.status(403).json({message: 'You are not in this board!'});
-      return;
-    }
-    else {
-      req.board = board;
-      next();
-    }
-  })
+  .exec();
+  if (!board ) {res.status(404).json({message: 'Not found board!'}); return;}
+  if (!board.verifyUser(user)) {
+    res.status(403).json({message: 'You are not in this board!'});
+    return;
+  }
+  req.board = board;
+  next();
 }
 
 /**
@@ -113,9 +111,10 @@ function isCreatedBy(req, res, next) {
 function matchID(req, res, next) {
   const user = req.user;
   const id = req.params.id;
-  if (user.verifyID(id)) {
+  try {
+    user.verifyID(id);
     next();
-    return;
+  } catch (err) {
+    res.status(err.code).json({message: err.message});
   }
-  res.status(403).json({message: 'You\'re not authorized!'});
 }

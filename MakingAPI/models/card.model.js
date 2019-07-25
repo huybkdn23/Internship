@@ -1,4 +1,5 @@
 const mongoose  = require('mongoose');
+const MyError   = require('../errors/myError.js');
 
 const schemaCard = new mongoose.Schema({
   title: {
@@ -55,7 +56,7 @@ schemaCard.methods.updateDueDate = function(dueDate) {
   if (dueDate) {
     let date = new Date(dueDate);
     if (date.getTime() !== date.getTime()) {
-      throw new Error('Invalid Date!');
+      throw new MyError(400, 'Invalid Date!');
     }
     this.dueDate = new Date(dueDate);
   }

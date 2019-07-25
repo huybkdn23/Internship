@@ -16,15 +16,18 @@ module.exports = {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function getFullBoard(req, res, next) {
+async function getFullBoard(req, res, next) {
   const user = req.user;
-  boardService.getBoardsOf(user)
-  .then(boards => {
+  const query = req.query.q;
+  const page = req.query.page;
+  const perPage = req.query.perPage;
+  const sort = req.query.sort;
+  try {
+    const boards = await boardService.getBoardsOf(user, query, page, perPage, sort);
     res.status(200).json({data: boards});
-  })
-  .catch(err => {
-    res.status(err.code).json({message: err.message});
-  })
+  } catch (err) {
+    res.json({message: err.message});
+  }
 }
 
 /**
@@ -35,16 +38,15 @@ function getFullBoard(req, res, next) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function createBoard(req ,res, next) {
+async function createBoard(req ,res, next) {
   const user = req.user;
   const name = req.body.name;
-  boardService.create(user, name)
-  .then(board => {
+  try {
+    const board = await boardService.create(user, name);
     res.status(200).json({message: 'Create board successful!', data: board});
-  })
-  .catch(err => {
-    res.status(500).json({message: err.message});
-  });
+  } catch (err) {
+    res.status(err.code).json({message: err.message});
+  }
 }
 
 /**
@@ -56,14 +58,10 @@ function createBoard(req ,res, next) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function getInBoard(req, res, next) {
+async function getInBoard(req, res, next) {
   const board = req.board;
-  // console.log(board);
-  
-  boardService.getIn(board)
-  .then(data => {
-    res.status(200).json({message: 'List users and cards!', data: data});
-  });
+  const data = await boardService.getIn(board);
+  res.status(200).json({message: 'List users and cards!', data: data});
 }
 
 /**
@@ -75,16 +73,15 @@ function getInBoard(req, res, next) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function updateNameBoard(req, res, next) {
+async function updateNameBoard(req, res, next) {
   const board = req.board;
   const newName = req.body.name;
-  boardService.update(board, newName)
-  .then(boardSaved => {
+  try {
+    const boardSaved = await boardService.update(board, newName);
     res.status(200).json({data: boardSaved});
-  })
-  .catch(err => {
+  } catch (err) {
     res.status(500).json({message: err.message});
-  });
+  }
 }
 
 /**
@@ -97,15 +94,14 @@ function updateNameBoard(req, res, next) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function deleteBoard(req, res, next) {
+async function deleteBoard(req, res, next) {
   const board = req.board;
-  boardService.deleteBoard(board)
-  .then(boardRemoved => {
+  try {
+    const boardRemoved = await boardService.deleteBoard(board);
     res.status(200).json({message: 'Delete board successful!', data: boardRemoved});
-  })
-  .catch(err => {
+  } catch (err) {
     res.status(500).json({message: err.message});
-  });
+  }
 }
 
 /**
@@ -117,10 +113,8 @@ function deleteBoard(req, res, next) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function getUsersInBoard(req, res, next) {
+async function getUsersInBoard(req, res, next) {
   const board = req.board;
-  boardService.getUsersIn(board)
-  .then(members => {
-    res.status(200).json({message: 'All users in board!', data: members});
-  });
+  const members = await boardService.getUsersIn(board);
+  res.status(200).json({message: 'All users in board!', data: members});
 }

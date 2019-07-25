@@ -9,7 +9,7 @@ dotenv.config();
 const PORT = process.env.HOST_PORT || 8000;
 
 connect_db();
-
+app.use('/uploads', express.static('uploads'));
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(bodyParser.json());
 app.use(morgan('dev'));

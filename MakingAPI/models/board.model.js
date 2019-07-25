@@ -17,6 +17,9 @@ const schemaBoard = new mongoose.Schema({
   }]
 });
 
+schemaBoard.index({'name': 'text'});
+schemaBoard.index({name : 1});
+
 schemaBoard.methods.isCreatedBy = function(user) {
   return this.createdBy.toString() === user._id.toString();
 }
@@ -29,8 +32,10 @@ schemaBoard.methods.verifyUser = function(user) {
 }
 
 schemaBoard.methods.verifyId = function(id) {
+  console.log('akjshd');
+  
   for (let i = 0, length = this.members.length; i < length; i++) {
-    if (this.members[i]._id.toString() === id) return true;
+    if (this.members[i].toString() === id) return true;
   }
   return false;
 }
@@ -43,6 +48,7 @@ schemaBoard.methods.removeCards = function(card) {
   let index = this.cards.indexOf(card);
   if (index < 0) return;
   this.cards.splice(index, 1);
+  this.save();
 }
 
 module.exports = mongoose.model('Board', schemaBoard);

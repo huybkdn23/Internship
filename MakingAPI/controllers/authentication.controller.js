@@ -12,14 +12,13 @@ module.exports = {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function createUser(req,res) {
-  authenService.create(req.body.email, req.body.password)
-  .then(user => {
+async function createUser(req,res) {
+  try {
+    const user = await authenService.create(req.body.email, req.body.password);
     res.status(200).json({data: user});
-  })
-  .catch(err => {
+  } catch (err) {
     res.status(err.code).json({message: err.message});
-  });
+  }
 }
 
 /**
@@ -29,15 +28,14 @@ function createUser(req,res) {
 * @param  {object}   req  HTTP request
 * @param  {object}   res  HTTP response
 */
-function login(req, res) {
+async function login(req, res) {
   const email = req.body.email;
   const password = req.body.password;
-  authenService.login(email, password)
-  .then(token => {
+  try {
+    const token = await authenService.login(email, password);
     res.status(200).json({message: 'Login successful!', token: token});
-  })
-  .catch(err => {
+  } catch (err) {
     res.status(err.code).json({message: err.message});
-  })
+  }
 }
 

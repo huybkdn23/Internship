@@ -1,8 +1,7 @@
 const collectionBoard   = require('../models/board.model.js');
-const collectionUser    = require('../models/user.model.js');
 const collectionCard    = require('../models/card.model.js');
-const userService       = require('./user.service.js');
-const mongoose          = require('mongoose');
+const MyError           = require('../errors/myError.js');
+const {DEFAULT_PERPAGE, ASCENDING, DESCENDING} = require('../configs/const.js');
 
 module.exports = {
   create,
@@ -20,13 +19,46 @@ module.exports = {
 * @param  {object}   user  Current user
 * @param  {String}   name  Name of board
 */
-function create(user, name) {
-  return collectionBoard.create({name: name, 
-                          members: user, 
-                          createdBy: user})
-  .then(boardSaved => {
-    return boardSaved;
-  });
+async function create(user, name) {
+  if (!name) throw new MyError(400, 'Empty name!');
+  try {
+    const boardSaved = await collectionBoard.create({name: name, 
+                                                    members: user, 
+                                                    createdBy: user});
+    return boardSaved; 
+  } catch (err) {
+    throw new MyError(400, err.message);
+  }
+}
+
+function pagination(page, perPage) {
+  let options = {};
+  page = parseInt(page - 1);
+  perPage = parseInt(perPage);
+  if (isNaN(perPage) || perPage <= 0) perPage = DEFAULT_PERPAGE;
+  options.limit = parseInt(perPage);
+  if (!isNaN(page) && page >= 0) {
+    options.skip = perPage * page;
+  }
+  //if page = null
+  else options.skip = 0;
+  return options;
+}
+
+function flexibleSort(sort){
+  if (!sort) sort = ASCENDING;
+  sort = sort.toLowerCase();
+  if (sort !== ASCENDING && sort !== DESCENDING) {
+    throw new MyError(422, 'Order by invalid!');
+  }
+  return sort;
+}
+
+function flexibleSearch(query, user) {
+  let conditionQuery = {'$and': [{members : user}]};
+  if (!query) return conditionQuery;
+  conditionQuery['$and'].push({'$text': {'$search' : query}});
+  return conditionQuery;
 }
 
 /**
@@ -35,13 +67,17 @@ function create(user, name) {
 *
 * @param  {object}   user  Current user
 */
-function getBoardsOf(user) {
-  return collectionBoard.find({members: user})
+async function getBoardsOf(user, query, page, perPage, sort) {
+  const optionsPagination = pagination(page, perPage);
+  const optionsSort = flexibleSort(sort);
+  const conditionSearch = flexibleSearch(query, user);
+  const boards = await collectionBoard.find(conditionSearch)
   .select('name')
-  .then(boards => {
-    if (!boards) return Promise.reject({code: 404, message: 'Not found boards!'});
-    return boards;
-  })
+  .setOptions(optionsPagination)
+  .sort({name : optionsSort})
+  .orFail(new MyError(404, 'Not found boards!'))
+  .exec();
+  return boards;
 }
 
 /**
@@ -50,11 +86,11 @@ function getBoardsOf(user) {
 *
 * @param  {object}   board  Current board
 */
-function getIn(board) {
-  return Promise.resolve({
-      users: board.members,
-      cards: board.cards
-    });
+async function getIn(board) {
+  return {
+    users: board.members,
+    cards: board.cards
+  }
 }
 
 /**
@@ -63,9 +99,11 @@ function getIn(board) {
 *
 * @param  {object}   board  Current board
 */
-function update(board, name) {
+async function update(board, name) {
+  if (!name) throw new MyError(400, 'Empty name!');
   board.name = name;
-  return board.save();
+  const boardSaved = await board.save();
+  return boardSaved;
 }
 
 /**
@@ -74,13 +112,14 @@ function update(board, name) {
 *
 * @param  {object}   board  Board deleted
 */
-function deleteBoard(board) {
+async function deleteBoard(board) {
   let cards = [];
   board.cards.forEach(card => {
     cards.push(card._id);
   });
   //remove all cards in this board
-  collectionCard.deleteMany({_id: cards}).exec((err) => {});
+  await collectionCard.deleteMany({_id: cards})
+  .exec();
   return board.remove();
 }
 
@@ -93,7 +132,7 @@ function deleteBoard(board) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function getUsersIn(board) {
+async function getUsersIn(board) {
   let members = []
   board.members.forEach(member => {
     let obj = {
@@ -111,6 +150,6 @@ function getUsersIn(board) {
     else members.push(obj);
   });
   
-  return Promise.resolve(members);
+  return members;
 }
   

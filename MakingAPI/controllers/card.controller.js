@@ -1,10 +1,9 @@
 const collectionUser    = require('../models/user.model.js');
-const collectionCard    = require('../models/card.model.js');
-const collectionBoard   = require('../models/board.model.js');
 const cardService       = require('../services/card.service.js');
 
 module.exports = {
   createCard,
+  getFullCards,
   getInCard,
   updateTitDesDueMem,
   deleteCard,
@@ -30,17 +29,43 @@ module.exports = {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function createCard(req, res, next) {
+async function createCard(req, res, next) {
   //Get title from body
   let board = req.board;
   const title = req.body.title;
-  cardService.create(board, title)
-  .then(cardSaved => {
+  try {
+    const cardSaved = await cardService.create(board, title);
     res.status(200).json({message: 'Create card successful!', data: cardSaved});
-  })
-  .catch(err => {
+  } catch (err) {
     res.status(500).json({message: err.message});
-  });
+  }
+}
+
+/**
+* @name getFullCards
+* @description
+* Check current user is exist in board before create card
+* Do create a card
+* @param  {object}   req  HTTP request
+* @param  {object}   res  HTTP response
+* @param  {Function} next Next middleware
+*/
+async function getFullCards(req, res, next) {
+  //Get title from body
+  let board = req.board;
+  const title = req.body.title;
+  const user = req.user;
+  const query = req.query.q;
+  const page = req.query.page;
+  const perPage = req.query.perPage;
+  const by = req.query.by;
+  const sort = req.query.sort;
+  try {
+    const cards = await cardService.getFullCards(user, query, page, perPage, by, sort);
+    res.status(200).json({message: 'Create card successful!', data: cardSaved});
+  } catch (err) {
+    res.status(500).json({message: err.message});
+  }
 }
 
 /**
@@ -52,15 +77,14 @@ function createCard(req, res, next) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function getInCard(req, res, next) {
+async function getInCard(req, res, next) {
   const id = req.params.cardId;
-  cardService.getCard(id)
-  .then(card => {
+  try {
+    const card = await cardService.getCard(id);
     res.status(200).json({message: 'Get all information of card!', data: card});
-  })
-  .catch(err => {
+  } catch (err) {
     res.status(err.code).json({message: err.message});
-  });
+  }
 }
 
 /**
@@ -72,21 +96,19 @@ function getInCard(req, res, next) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function updateTitDesDueMem(req, res, next) {
+async function updateTitDesDueMem(req, res, next) {
   //Get title, description, dueDate, member from body
   const id  = req.params.cardId;
-  let board = req.board;
   const title = req.body.title;
   const description = req.body.description;
   const dueDate = req.body.dueDate;
   const memberId = req.body.memberId;
-  cardService.updateTitDesDueMem(id, board, title, description, dueDate, memberId)
-  .then(cardSaved => {
+  try {
+    const cardSaved = await cardService.updateTitDesDueMem(id, title, description, dueDate, memberId);
     res.status(200).json({message: 'Update successful!', data: cardSaved});
-  })
-  .catch(err => {
-    res.status(err.code).json({message: err.message});
-  });
+  } catch (err) {
+    res.json({message: err.message});
+  }
 }
 
 /**
@@ -98,16 +120,15 @@ function updateTitDesDueMem(req, res, next) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function deleteCard(req, res, next) {
+async function deleteCard(req, res, next) {
   let board = req.board;
   const cardId  = req.params.cardId;
-  cardService.deleteCard(cardId, board)
-  .then(boardSaved => {
+  try {
+    const boardSaved = await cardService.deleteCard(cardId, board);
     res.status(200).json({message: 'Delete card successful!', data: boardSaved});
-  })
-  .catch(err => {
+  } catch (err) {
     res.status(err.code).json({message: err.message});
-  });
+  }
 }
 
 /**
@@ -119,15 +140,14 @@ function deleteCard(req, res, next) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function getFullCommentInCard(req, res, next) {
+async function getFullCommentInCard(req, res, next) {
   const id = req.params.cardId;
-  cardService.getComments(id)
-  .then(comments => {
+  try {
+    const comments = await cardService.getComments(id);
     res.status(200).json({message: 'All comments in card!', data: comments});
-  })
-  .catch(err => {
+  } catch (err) {
     res.status(err.code).json({message: err.message});
-  })
+  }
 }
 
 /**
@@ -139,18 +159,17 @@ function getFullCommentInCard(req, res, next) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function addComment(req, res, next) {
+async function addComment(req, res, next) {
   //Get comment from body
   const user = req.user;
   const cardId  = req.params.cardId;
   const comment = req.body.comment;
-  cardService.addComment(comment, cardId, user)
-  .then(cardSaved => {
+  try {
+    const cardSaved = await cardService.addComment(comment, cardId, user);
     res.status(200).json({message: 'Add comment successful!', data: cardSaved});
-  })
-  .catch(err => {
+  } catch (err) {
     res.status(err.code).json({message: err.message});
-  });
+  }
 }
 
 /**
@@ -163,20 +182,19 @@ function addComment(req, res, next) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function updateComment(req, res, next) {
+async function updateComment(req, res, next) {
   const user = req.user;
   const cardId = req.params.cardId;
   //get index of comment from params
   //get newComment from body
   const index = req.params.index;
   const newComment = req.body.comment;
-  cardService.updateComment(newComment, index, cardId, user)
-  .then(cardSaved => {
+  try {
+    const cardSaved = await cardService.updateComment(newComment, index, cardId, user);
     res.status(200).json({message: 'Update comment successful!', data: cardSaved});
-  })
-  .catch(err => {
+  } catch (err) {
     res.status(err.code).json({message: err.message});
-  });
+  }
 }
 
 /**
@@ -189,19 +207,18 @@ function updateComment(req, res, next) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function deleteComment(req, res, next) {
+async function deleteComment(req, res, next) {
   const user = req.user;
   const board = req.board;
   const cardId = req.params.cardId;
   //get index of comment from params
   const index = req.params.index;
-  cardService.deleteComment(index, cardId, user, board)
-  .then(cardSaved =>{
-    res.status(200).json({message:'Delete comment successful!', data: cardSaved});
-  })
-  .catch(err => {
+  try {
+    const cardSaved = await cardService.deleteComment(index, cardId, user, board);
+    res.status(200).json({message: 'Delete comment successful!', data: cardSaved});
+  } catch (err) {
     res.status(err.code).json({message: err.message});
-  });
+  }
 }
 
 /**
@@ -213,15 +230,14 @@ function deleteComment(req, res, next) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function getFullTaskInCard(req, res, next) {
+async function getFullTaskInCard(req, res, next) {
   const cardId = req.params.cardId;
-  cardService.getTasks(cardId)
-  .then(tasks => {
+  try {
+    const tasks = await cardService.getTasks(cardId);
     res.status(200).json({message: 'All tasks of card!', data: tasks});
-  })
-  .catch(err => {
+  } catch (err) {
     res.status(err.code).json({message: err.message});
-  });
+  }
 }
 
 /**
@@ -233,16 +249,15 @@ function getFullTaskInCard(req, res, next) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function addTask(req, res, next) {
+async function addTask(req, res, next) {
   const cardId = req.params.cardId;
   const name = req.body.name;
-  cardService.addTask(cardId, name)
-  .then(cardSaved => {
+  try {
+    const cardSaved = await cardService.addTask(cardId, name);
     res.status(200).json({message: 'Add task successful!', data: cardSaved});
-  })
-  .catch(err => {
+  } catch (err) {
     res.status(err.code).json({message: err.message});
-  });
+  }
 }
 
 /**
@@ -254,19 +269,18 @@ function addTask(req, res, next) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function updateTaskName(req, res, next) {
+async function updateTaskName(req, res, next) {
   const cardId = req.params.cardId;
   //Get index of task from params
   //Get newName from body
   const index = req.params.index;
   const newName = req.body.name;
-  cardService.updateTaskName(newName, index, cardId)
-  .then(cardSaved => {
+  try {
+    const cardSaved = await cardService.updateTaskName(newName, index, cardId);
     res.status(200).json({message: 'Update task name successful!', data: cardSaved});
-  })
-  .catch(err => {
+  } catch (err) {
     res.status(err.code).json({message: err.message});
-  });
+  }
 }
 
 /**
@@ -278,17 +292,16 @@ function updateTaskName(req, res, next) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function deleteTask(req, res, next) {
+async function deleteTask(req, res, next) {
   const cardId = req.params.cardId;
   //Get index of task from params
   const index = req.body.index;
-  cardService.deleteTask(index, cardId)
-  .then(cardSaved => {
+  try {
+    const cardSaved = await cardService.deleteTask(index, cardId);
     res.status(200).json({message: 'Delete task successful!', data: cardSaved});
-  })
-  .catch(err => {
+  } catch (err) {
     res.status(err.code).json({message: err.message});
-  });
+  }
 }
 
 /**
@@ -300,18 +313,17 @@ function deleteTask(req, res, next) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function addContentTask(req, res, next) {
+async function addContentTask(req, res, next) {
   const cardId = req.params.cardId;
   //Get index of task content from params
   const index = req.params.index;
   const content = req.body.content;
-  cardService.addContentTask(content, index, cardId)
-  .then(cardSaved => {
+  try {
+    const cardSaved = await cardService.addContentTask(content, index, cardId);
     res.status(200).json({message: 'Add content task successful!', data: cardSaved});
-  })
-  .catch(err => {
+  } catch (err) {
     res.status(err.code).json({memberId: err.message});
-  });
+  }
 }
 
 /**
@@ -323,20 +335,19 @@ function addContentTask(req, res, next) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function updateContentTask(req, res, next) {
+async function updateContentTask(req, res, next) {
   const cardId = req.params.cardId;
   //Get index of task, index of content from params
   //Get newContent from body
   const indexTask = req.params.indexTask;
   const indexContent = req.params.indexContent;
   const newContent = req.body.content;
-  cardService.updateContentTask(newContent, indexTask, indexContent, cardId)
-  .then(cardSaved => {
+  try {
+    const cardSaved = await cardService.updateContentTask(newContent, indexTask, indexContent, cardId);
     res.status(200).json({message: 'Update content task successful!', data: cardSaved});
-  })
-  .catch(err => {
+  } catch (err) {
     res.status(err.code).json({memberId: err.message});
-  });
+  }
 }
 
 /**
@@ -348,16 +359,15 @@ function updateContentTask(req, res, next) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function deleteContentTask(req, res, next) {
+async function deleteContentTask(req, res, next) {
   const cardId = req.params.cardId;
   //Get index of task, indexContent of content from body
   const indexTask = req.params.indexTask;
   const indexContent = req.params.indexContent;
-  cardService.deleteContentTask(indexTask, indexContent, cardId)
-  .then(cardSaved => {
+  try {
+    const cardSaved = await cardService.deleteContentTask(indexTask, indexContent, cardId);
     res.status(200).json({message: 'Delete content task successful!', data: cardSaved});
-  })
-  .catch(err => {
+  } catch (err) {
     res.status(err.code).json({memberId: err.message});
-  });
+  }
 }

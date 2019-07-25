@@ -1,5 +1,6 @@
 const collectionCard    = require('../models/card.model.js');
-
+const collectionBoard   = require('../models/board.model.js');
+const MyError           = require('../errors/myError.js');
 module.exports = {
   create,
   getCard,
@@ -27,11 +28,12 @@ module.exports = {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function create(board, title) {
+async function create(board, title) {
+  if (!title) throw new MyError(400, 'Empty title!');
   let card = new collectionCard({title: title});
   board.cards.push(card);
   board.save();
-  return card.save();
+  return await card.save();
 }
 
 /**
@@ -43,18 +45,15 @@ function create(board, title) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function getCard(id) {
-  return collectionCard.findById(id)
+async function getCard(id) {
+  const card = await collectionCard.findById(id)
   .populate({
     path: 'members',
     select: 'email username'
   })
-  .then(card => {
-    if (!card) {
-      return Promise.reject({code: 404, message: 'Not found card!'});
-    }
-    return card;
-  });
+  .orFail(new MyError(404, 'Not found card!'))
+  .exec();
+  return card;
 }
 
 /**
@@ -66,25 +65,27 @@ function getCard(id) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function updateTitDesDueMem(id, board, title, description, dueDate, memberId) {
+async function updateTitDesDueMem(id, title, description, dueDate, memberId) {
+  const board = await collectionBoard.findOne({cards: id})
+  .exec();
   //Get title, description, dueDate, member from body
-  return collectionCard.findById(id)
-  .then(card => {
-    if (!card) return Promise.reject({code: 404, message: 'Not found card!'});
-    card.updateTitle(title);
-    card.updateDescription(description);
-    try {
-      card.updateDueDate(dueDate);
-    } catch (error) {
-      return Promise.reject({code: 400, message: error.message});
-    }
-    if (memberId && board.verifyId(memberId)) {
-      //Check if member is exist in the card, they are removed on card. Else they are pushed on card
-      //Member can be added or deleted
-      return card.updateMember(memberId);
-    }
-    return card.save();
-  });
+  const card = await collectionCard.findById(id)
+  .orFail(new MyError(404, 'Not found card!'))
+  .exec();
+  card.updateTitle(title);
+  card.updateDescription(description);
+  try {
+    card.updateDueDate(dueDate);
+  } catch (error) {
+    throw new MyError(error.code, error.message);
+  }
+  if (memberId) {
+    if (!board.verifyId(memberId)) throw new MyError(404, 'Invalid member!');
+    //Check if member is exist in the card, they are removed on card. Else they are pushed on card
+    //Member can be added or deleted
+    return await card.updateMember(memberId);
+  }
+  return await card.save();
 }
 
 /**
@@ -96,17 +97,12 @@ function updateTitDesDueMem(id, board, title, description, dueDate, memberId) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function deleteCard(id, board) {
-  return collectionCard.findById(id)
-  .then(card => {
-    try {
-      board.removeCards(card);
-      card.remove();
-      return board.save();
-    } catch (error) {
-      return Promise.reject({code: 500, message: err.message});
-    }
-  });
+async function deleteCard(id, board) {
+  const card = await collectionCard.findById(id)
+  .orFail(new MyError(404, 'Not found card!'))
+  .exec();
+  board.removeCards(card);
+  return await card.remove();
 }
 
 /**
@@ -118,14 +114,11 @@ function deleteCard(id, board) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function getComments(id) {
-  return collectionCard.findById(id)
-  .then(card => {
-    if (!card) {
-      return Promise.reject({code: 404, message: 'Not found card!'});
-    }
-    return card.comments;
-  });
+async function getComments(id) {
+  const card = await collectionCard.findById(id)
+  .orFail(new MyError(404, 'Not found card!'))
+  .exec();
+  return card.comments;
 }
 
 /**
@@ -137,17 +130,16 @@ function getComments(id) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function addComment(comment, id, user) {
-  return collectionCard.findById(id)
-  .then(card => {
-    if (!card) return Promise.reject({code: 404, message: 'Not found card!'});
-    if (!comment) return Promise.reject({code: 400, message: 'Empty comment!'});
-    card.comments.push({
-      content: comment,
-      commentedBy: user._id
-    });
-    return card.save();
+async function addComment(comment, id, user) {
+  if (!comment) throw new MyError(400, 'Empty comment!');
+  const card = await collectionCard.findById(id)
+  .orFail(new MyError(404, 'Not found card!'))
+  .exec();
+  card.comments.push({
+    content: comment,
+    commentedBy: user._id
   });
+  return await card.save();
 }
 
 /**
@@ -160,21 +152,17 @@ function addComment(comment, id, user) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function updateComment(comment, index, id, user) {
-  return collectionCard.findById(id)
-  .then(card => {
-    if (!card) return Promise.reject({code: 404, message: 'Not found card!'});
-    //Check who comments
-    if (!card.isCommentedBy(user, index)) {
-      return Promise.reject({code: 403, message: 'You\'re not authorized!'});
-    }
-    card.comments[index].content = comment;
-    try {
-      return card.save();
-    } catch (error) {
-      return Promise.reject({code: 500, message: err.message});
-    }
-  })
+async function updateComment(comment, index, id, user) {
+  if (!comment) throw new MyError(400, 'Empty comment!');
+  const card = await collectionCard.findById(id)
+  .orFail(new MyError(404, 'Not found card!'))
+  .exec();
+  //Check who comments
+  if (!card.isCommentedBy(user, index)) {
+    throw new MyError(403, 'You\'re not authorized!');
+  }
+  card.comments[index].content = comment;
+  return await card.save();
 }
 
 /**
@@ -187,22 +175,17 @@ function updateComment(comment, index, id, user) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function deleteComment(index, id, user, board) {
-  return collectionCard.findById(id)
-  .then(card => {
-    if (!card) return Promise.reject({code: 404, message: 'Not found card!'});
-    //Check who comments
-    if (card.isCommentedBy(user, index) || board.isCreatedBy(user)) {
-      //remove comment and who comments
-      card.comments.splice(index, 1);
-      try {
-        return card.save();
-      } catch (error) {
-        return Promise.reject({code: 500, message: err.message});
-      }
-    }
-    return Promise.reject({code: 403, message: 'You\'re not authorized!'});
-  })
+async function deleteComment(index, id, user, board) {
+  const card = await collectionCard.findById(id)
+  .orFail(new MyError(404, 'Not found card!'))
+  .exec();
+  //Check who comments
+  if (card.isCommentedBy(user, index) || board.isCreatedBy(user)) {
+    //remove comment and who comments
+    card.comments.splice(index, 1);
+    return await card.save();
+  }
+  throw new MyError(403, 'You\'re not authorized!');
 }
 
 /**
@@ -214,12 +197,11 @@ function deleteComment(index, id, user, board) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function getTasks(id) {
-  return collectionCard.findById(id)
-  .then(card => {
-    if (!card) return Promise.reject({code: 404, message: 'Not found card!'});
-    return card.tasks;
-  });
+async function getTasks(id) {
+  const card = await collectionCard.findById(id)
+  .orFail(new MyError(404, 'Not found card!'))
+  .exec();
+  return card.tasks;
 }
 
 /**
@@ -231,18 +213,13 @@ function getTasks(id) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function addTask(id, name) {
-  return collectionCard.findById(id)
-  .then(card => {
-    if (!card) return Promise.reject({code: 404, message: 'Not found card!'});
-    if (!name) return Promise.reject({code: 400, message: 'Empty task name!'});
-    card.tasks.push({taskName: name});
-    try {
-      return card.save();
-    } catch (error) {
-      return Promise.reject({code: 500, message: err.message});
-    }
-  });
+async function addTask(id, name) {
+  if (!name) throw new MyError(400, 'Empty task name!');
+  const card = await collectionCard.findById(id)
+  .orFail(new MyError(404, 'Not found card!'))
+  .exec();
+  card.tasks.push({taskName: name});
+  return await card.save();
 }
 
 /**
@@ -254,18 +231,13 @@ function addTask(id, name) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function updateTaskName(name, index, id) {
-  return collectionCard.findById(id)
-  .then(card => {
-    if (!card) return Promise.reject({code: 404, message: 'Not found card!'});
-    if (!name) return Promise.reject({code: 400, message: 'Empty task name!'});
-    card.tasks[index].taskName = name;
-    try {
-      return card.save();
-    } catch (error) {
-      return Promise.reject({code: 500, message: err.message});
-    }
-  });
+async function updateTaskName(name, index, id) {
+  if (!name) throw new MyError(400, 'Empty task name!');
+  const card = await collectionCard.findById(id)
+  .orFail(new MyError(404, 'Not found card!'))
+  .exec();
+  card.tasks[index].taskName = name;
+  return await card.save();
 }
 
 /**
@@ -277,17 +249,12 @@ function updateTaskName(name, index, id) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function deleteTask(index, id) {
-  return collectionCard.findById(id)
-  .then(card => {
-    if (!card) return Promise.reject({code: 404, message: 'Not found card!'});
-    card.tasks.splice(index, 1);
-    try {
-      return card.save();
-    } catch (error) {
-      return Promise.reject({code: 500, message: err.message});
-    }
-  });
+async function deleteTask(index, id) {
+  const card = await collectionCard.findById(id)
+  .orFail(new MyError(404, 'Not found card!'))
+  .exec();
+  card.tasks.splice(index, 1);
+  return await card.save();
 }
 
 /**
@@ -299,17 +266,13 @@ function deleteTask(index, id) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function addContentTask(content, index, id) {
-  return collectionCard.findById(id)
-  .then(card => {
-    if (!card) return Promise.reject({code: 404, message: 'Not found card!'});
-    card.tasks[index].contents.push(content);
-    try {
-      return card.save();
-    } catch (error) {
-      return Promise.reject({code: 500, message: err.message});
-    }
-  });
+async function addContentTask(content, index, id) {
+  if (!content) throw new MyError(400, 'Empty content!');
+  const card = await collectionCard.findById(id)
+  .orFail(new MyError(404, 'Not found card!'))
+  .exec();
+  card.tasks[index].contents.push(content);
+  return await card.save();
 }
 
 /**
@@ -321,17 +284,14 @@ function addContentTask(content, index, id) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function updateContentTask(content, indexTask, indexContent, id) {
-  return collectionCard.findById(id)
-  .then(card => {
-    if (!card) return Promise.reject({code: 404, message: 'Not found card!'});
-    card.tasks[indexTask].contents[indexContent] = content;
-    try {
-      return card.save();
-    } catch (error) {
-      return Promise.reject({code: 500, message: err.message});
-    }
-  });
+async function updateContentTask(content, indexTask, indexContent, id) {
+  if (!content) throw new MyError(400, 'Empty content!');
+  let card = await collectionCard.findById(id)
+  .orFail(new MyError(404, 'Not found card!'))
+  .exec();
+  card.markModified('tasks');
+  card.tasks[indexTask].contents[indexContent] = content;
+  return await card.save();
 }
 
 /**
@@ -343,15 +303,10 @@ function updateContentTask(content, indexTask, indexContent, id) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function deleteContentTask(indexTask, indexContent, id) {
-  return collectionCard.findById(id)
-  .then(card => {
-    if (!card) return Promise.reject({code: 404, message: 'Not found card!'});
-    card.tasks[indexTask].contents.splice(indexContent, 1);
-    try {
-      return card.save();
-    } catch (error) {
-      return Promise.reject({code: 500, message: err.message});
-    }
-  });
+async function deleteContentTask(indexTask, indexContent, id) {
+  const card = await collectionCard.findById(id)
+  .orFail(new MyError(404, 'Not found card!'))
+  .exec();
+  card.tasks[indexTask].contents.splice(indexContent, 1);
+  return await card.save();
 }

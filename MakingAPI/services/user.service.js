@@ -1,13 +1,15 @@
 const collectionUser  = require('../models/user.model.js');
 const collectionBoard = require('../models/board.model.js');
 const collectionCard  = require('../models/card.model.js');
+const MyError         = require('../errors/myError.js');
 
 module.exports = {
   getUser,
   update,
   invite,
   remove,
-  getCardsOf
+  getCardsOf,
+  updateAvatar
 }
 
 /**
@@ -18,16 +20,12 @@ module.exports = {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function getUser(id) {
-  return new Promise (function(resolve, reject) {
-    collectionUser.findById(id)
-    .select('username firstName lastName email -_id')
-    .exec((err, user) => {
-      if (err) return Promise.reject({code: 404, message: err.message});
-      if (user) return resolve(user);
-      else reject({code: 404, message: 'Not found User!'});
-    });
-  });
+async function getUser(id) {
+  const user = await collectionUser.findById(id)
+  .select('username firstName lastName email -_id')
+  .orFail(new MyError(404, 'Not found User!'))
+  .exec();
+  return user;
 }
 
 /**
@@ -38,17 +36,24 @@ function getUser(id) {
 * @param  {object}   req  HTTP request
 * @param  {object}   res  HTTP response
 */
-function update(user, username, firstName, lastName) {
-  return collectionUser.findByIdAndUpdate(user._id,
-                                          {firstName: firstName, 
-                                            lastName: lastName, 
-                                            username: username},
-                                          {new: true,                   //return update value 
-                                            runValidators: true})       //validate before update
-  .then(userUpdated => {
-    if (!userUpdated) return Promise.reject({code: 404, message: 'Not found user!'});
-    return userUpdated;
-  });
+async function update(id, username, firstName, lastName, birthDay, path) {
+  if (!username && !firstName && !lastName && !birthDay && !path) {
+    throw new MyError(400, 'Empty field!');
+  }
+  try {
+    //validate before update
+    //return update value 
+    let user = await collectionUser.findById(id)
+    .orFail(new MyError(404, 'Not found user!'))
+    .exec();
+    user.updateUsername(username);
+    user.updateFirstName(firstName);
+    user.updateLastName(lastName);
+    user.updateBirth(birthDay);
+    return await user.save();
+  } catch (error) {
+    throw new MyError(error.code, error.message);
+  }
 }
 
 /**
@@ -61,17 +66,16 @@ function update(user, username, firstName, lastName) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function invite(id, board) {
-  return collectionUser.findById(id)
+async function invite(id, board) {
+  const user = await collectionUser.findById(id)
   .select('-hashPassword')
-  .then(user => {
-    if (!user) return Promise.reject({code: 404, message: 'Not found user!'});
-    if (board.verifyUser(user)) {
-      return Promise.reject({code: 400, message: 'User invited is exist in board'});
-    }
-    board.members.push(user);
-    return board.save();
-  });
+  .orFail(new MyError(404, 'Not found user!'))
+  .exec();
+  if (board.verifyUser(user)) {
+    throw new MyError(400, 'User invited is exist in board');
+  }
+  board.members.push(user);
+  return await board.save();
 }
 
 /**
@@ -85,23 +89,22 @@ function invite(id, board) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function remove(id, board) {
-  return collectionUser.findById(id)
+async function remove(id, board) {
+  const user = await collectionUser.findById(id)
   .select('-hashPassword')
-  .then(user => {
-    if (!user) return Promise.reject({code: 404, message: 'Not found user!'});
-    if (!board.verifyUser(user)) {
-      return Promise.reject({code: 403, message: 'User removed is exist in board'});
-    }
-    //remove user in card (member and comment)
-    board.cards.forEach(card => {
-      card.removeUser(user);
-    });
-    //remove user in board
-    let indexOfUser = board.getIndexOf(user);
-    board.members.splice(indexOfUser, 1);
-    return board.save();
+  .orFail(new MyError(404, 'Not found user!'))
+  .exec();
+  if (!board.verifyUser(user)) {
+    throw new MyError(400, 'User removed is not exist in board');
+  }
+  //remove user in card (member and comment)
+  board.cards.forEach(card => {
+    card.removeUser(user);
   });
+  //remove user in board
+  let indexOfUser = board.getIndexOf(user);
+  board.members.splice(indexOfUser, 1);
+  return await board.save();
 }
 
 /**
@@ -112,12 +115,22 @@ function remove(id, board) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function getCardsOf(id) {
-  return collectionCard.find({members: id})
-  .then(cards => {
-    if (!cards) {
-      return Promise.reject({code: 404, message: 'Not found card!'});
-    }
-    return cards;
-  });
+async function getCardsOf(id) {
+  const cards = await collectionCard.find({members: id})
+  .orFail(new MyError(404, 'Not found card!'))
+  .exec();
+  return cards;
+}
+
+/**
+* @name updateAvatar
+* @description
+* Do get all card of current user
+* @param  {Object}   user  Current user
+* @param  {String}   path  Path image
+*/
+async function updateAvatar(user, path) {
+  if (path === '') throw new MyError(400, 'Invalid image!');
+  user.path = path;
+  return await user.save();
 }

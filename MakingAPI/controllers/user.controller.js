@@ -5,7 +5,8 @@ module.exports = {
   inviteUser,
   removeUser,
   getUser,
-  getAllCardOfUser
+  getAllCardOfUser,
+  updateAvatar
 }
 
 /**
@@ -16,19 +17,21 @@ module.exports = {
 * @param  {object}   req  HTTP request
 * @param  {object}   res  HTTP response
 */
-function updateProfile(req,res) {
+async function updateProfile(req, res) {
   const user = req.user;
+  const id = req.params.id;
   const username = req.body.username;
   const firstName = req.body.firstName;
   const lastName = req.body.lastName;
-  //send ID and user to check if that is current user
-  userService.update(user, username, firstName, lastName)
-  .then(userUpdated => {
+  const birthDay = req.body.birthDay;
+  try {
+    //Check if that is current user
+    user.verifyID(id);
+    const userUpdated = await userService.update(id, username, firstName, lastName, birthDay);
     res.status(200).json({message: 'Update successful!', data: userUpdated});
-  })
-  .catch(err => {
+  } catch (err) {
     res.status(err.code).json({message: err.message});
-  });
+  }
 }
 
 /**
@@ -41,17 +44,16 @@ function updateProfile(req,res) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function inviteUser(req, res, next) {
+async function inviteUser(req, res, next) {
   //Get nameOrMail from body
   let board = req.board;
   let memberId = req.params.memberId;
-  userService.invite(memberId, board)
-  .then(boardSaved => {
+  try {
+    const boardSaved = await userService.invite(memberId, board);
     res.status(200).json({message: 'Invite member successful!', data: boardSaved});
-  })
-  .catch(err => {
+  } catch (err) {
     res.status(err.code).json({message: err.message});
-  })
+  }
 }
 
 /**
@@ -65,16 +67,15 @@ function inviteUser(req, res, next) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function removeUser(req, res, next) {
+async function removeUser(req, res, next) {
   let board = req.board;
   let memberId = req.params.memberId;
-  userService.remove(memberId, board)
-  .then(boardSaved => {
+  try {
+    const boardSaved = await userService.remove(memberId, board);
     res.status(200).json({message: 'Remove successful!', data: boardSaved});
-  })
-  .catch(err => {
+  } catch (err) {
     res.status(err.code).json({message: err.message});
-  });
+  }
 }
 
 /**
@@ -85,15 +86,14 @@ function removeUser(req, res, next) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function getUser(req, res, next) {
+async function getUser(req, res, next) {
   const id = req.params.id;
-  userService.getUser(id)
-  .then(user => {
+  try {
+    const user = await userService.getUser(id);
     res.status(200).json({message: 'Get user by id!', data: user});
-  })
-  .catch(err => {
+  } catch (err) {
     res.status(err.code).json({message: err.message});
-  })
+  }
 }
 
 /**
@@ -104,13 +104,24 @@ function getUser(req, res, next) {
 * @param  {object}   res  HTTP response
 * @param  {Function} next Next middleware
 */
-function getAllCardOfUser(req, res, next) {
+async function getAllCardOfUser(req, res, next) {
   const id = req.params.id;
-  userService.getCardsOf(id)
-  .then(cards => {
+  try {
+    const cards = await userService.getCardsOf(id);
     res.status(200).json({message: 'Get all card of user', data: cards});
-  })
-  .catch(err => {
+  } catch (err) {
     res.status(err.code).json({message: err.message});
-  });
+  }
+}
+async function updateAvatar(req, res) {
+  try {
+    let user = req.user;
+    const path = req.file.path;
+    const id = req.params.id;
+    user.verifyID(id);
+    const userSaved = await userService.updateAvatar(user, path);
+    res.status(200).json({message: 'Update avatar successful!', data: userSaved});
+  } catch (err) {
+    res.status(err.code).json({message: err.message});
+  }
 }
