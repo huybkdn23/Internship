@@ -14,7 +14,7 @@ const schemaCard = new mongoose.Schema({
   // },
   tasks: [{
     taskName: String,
-    contents: [String],
+    contents: [String]
   }],
   members: [{
     type: mongoose.Schema.Types.ObjectId,
