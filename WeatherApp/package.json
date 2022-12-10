@@ -10,7 +10,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.17.1",
+    "express": "^4.17.3",
     "forecastio": "^2.0.0",
     "zippity-do-dah": "0.0.3"
   }
